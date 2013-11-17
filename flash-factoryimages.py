@@ -25,15 +25,22 @@ import argparse
 import hashlib
 import os
 import subprocess
+import sys
 import tarfile
 import time
 import urllib.request
 
 class ADB:
     
+    def __init__(self):
+        self.adb_path = sys.platform + '/' + 'adb'
+        if not os.path.exists(self.adb_path):
+            raise Exception('adb executable not found')
+        print('Found', self.adb_path)
+
     def getDeviceProperty(self, prop_name):
         try:
-            result = subprocess.check_output(['adb', '-d', 'shell', 'getprop', prop_name], universal_newlines=True)
+            result = subprocess.check_output([self.adb_path, '-d', 'shell', 'getprop', prop_name], universal_newlines=True)
         except FileNotFoundError:
             raise Exception('Couldn\'t find adb binary')
         except subprocess.CalledProcessError:
@@ -47,7 +54,7 @@ class ADB:
     
     def getDeviceStatus(self):
         try:
-            result = subprocess.check_output(['adb', 'get-state'], universal_newlines=True)
+            result = subprocess.check_output([self.adb_path, 'get-state'], universal_newlines=True)
         except FileNotFoundError:
             raise Exception('Couldn\'t find adb binary')
         except subprocess.CalledProcessError:
@@ -57,7 +64,7 @@ class ADB:
     
     def rebootBootloader(self):
         try:
-            subprocess.check_output(['adb', 'reboot-bootloader'], universal_newlines=True)
+            subprocess.check_output([self.adb_path, 'reboot-bootloader'], universal_newlines=True)
         except FileNotFoundError:
             raise Exception('Couldn\'t find adb binary')
         except subprocess.CalledProcessError:
@@ -79,11 +86,9 @@ class Fastboot:
     # fastboot -w update image-nakasi-krt16o.zip
     
     def __init__(self):
-        try:
-            result = subprocess.check_output(['which', 'fastboot'], universal_newlines=True)
-        except FileNotFoundError:
-            raise Exception('Command not found. WTF? Are you on Windoze?')
-        self.fastboot_path = result.replace('\r', '').replace('\n', '')
+        self.fastboot_path = sys.platform + '/' + 'fastboot'
+        if not os.path.exists(self.fastboot_path):
+            raise Exception('fastboot executable not found')
         print('Found', self.fastboot_path)
 
     def cmd(self, *params):
@@ -236,8 +241,11 @@ class FactoryImages:
 class Main:    
     
     def run(self):
-        print('Connecting...')
+        # healt check, constructors raise exception if tools are not found
         adb = ADB()
+        fastboot = Fastboot()
+
+        print('Connecting...')
         if adb.getDeviceStatus() == False:
             print('Device not ready.')
         else:
@@ -263,7 +271,6 @@ class Main:
                 
                 print('Flashing images...')
                 adb.rebootBootloader()                
-                fastboot = Fastboot()
                 fastboot.flash(bootloader, system, self.args.wipe)
                 
     def parse_args(self):

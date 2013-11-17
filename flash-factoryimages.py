@@ -21,6 +21,7 @@
 
 from html.parser import HTMLParser
 
+import argparse
 import hashlib
 import os
 import subprocess
@@ -259,11 +260,18 @@ class Main:
                 # by default the device is not wiped
                 # If you're coming from a custom ROM you have to wipe it
                 # Therefore set the 'wipe' parameter of fastboot.flash(..)
+                
                 print('Flashing images...')
                 adb.rebootBootloader()                
                 fastboot = Fastboot()
-                fastboot.flash(bootloader, system)
+                fastboot.flash(bootloader, system, self.args.wipe)
+                
+    def parse_args(self):
+        parser = argparse.ArgumentParser(description='Flash Nexus factory images.')
+        parser.add_argument('--wipe', action='store_true', help='wipe the device before flashing')
+        self.args = parser.parse_args()
             
 if __name__ == "__main__":
     main = Main()
+    main.parse_args()
     main.run()

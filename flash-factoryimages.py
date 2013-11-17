@@ -177,14 +177,26 @@ class FactoryImages:
         f = urllib.request.urlopen('https://developers.google.com/android/nexus/images')
         self.data = f.read().decode()   
         
+    def _get_version_index(self, raw_version):
+        # convert into integer
+        v = int(raw_version.replace('.', ''))
+        if v <= 0:
+            raise Exception('Invalid version string: ', raw_version)
+        # make sure there's always 3 digits
+        while v < 100:
+            v *= 10
+        return v
+    
     def getLatest(self, model, version):
+        device_version = self._get_version_index(version)
+        
         parser = ImageParser(strict=False)
         parser.parse(self.data, model)
         
         latest_image = None
         for factory_image in parser.image_url_list:
-            image_version = factory_image['version'].split(' ')[0].replace('.', '')
-            if int(image_version) > int(version.replace('.', '')):
+            image_version = self._get_version_index(factory_image['version'].split(' ')[0])
+            if image_version > device_version:
                 latest_image = factory_image
                 
         return latest_image

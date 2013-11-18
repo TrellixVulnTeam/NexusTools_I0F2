@@ -40,7 +40,7 @@ class ADB:
             raise Exception('Executable not found: ' + self.adb_path)
         print('Found', self.adb_path)
 
-    def getDeviceProperty(self, prop_name):
+    def get_device_property(self, prop_name):
         try:
             result = subprocess.check_output([self.adb_path, '-d', 'shell', 'getprop', prop_name], universal_newlines=True)
         except FileNotFoundError:
@@ -49,12 +49,12 @@ class ADB:
             raise Exception('Error executing adb command')
         return result.replace('\r', '').replace('\n', '')
 
-    def getDeviceInfo(self):
-        model = self.getDeviceProperty('ro.product.name')
-        version = self.getDeviceProperty('ro.build.version.release')
+    def get_device_info(self):
+        model = self.get_device_property('ro.product.name')
+        version = self.get_device_property('ro.build.version.release')
         return model, version
     
-    def getDeviceStatus(self):
+    def get_device_status(self):
         try:
             result = subprocess.check_output([self.adb_path, 'get-state'], universal_newlines=True)
         except FileNotFoundError:
@@ -64,7 +64,7 @@ class ADB:
         status = result.replace('\r', '').replace('\n', '')
         return status.endswith('device')
     
-    def rebootBootloader(self):
+    def reboot_bootloader(self):
         try:
             subprocess.check_output([self.adb_path, 'reboot-bootloader'], universal_newlines=True)
         except FileNotFoundError:
@@ -235,7 +235,7 @@ class FactoryImages:
                     if not data:
                         print('')
                         break
-                    foversionut.write(data)
+                    fout.write(data)
 
                     progress += 1                
                     percent = (int)(progress * 100 / size_mb)
@@ -270,10 +270,10 @@ class Main:
         self.factory_images = FactoryImages()
 
         print('Connecting...')
-        if self.adb.getDeviceStatus() == False:
+        if self.adb.get_device_status() == False:
             print('Device not ready.')
         else:
-            self.model, self.version = self.adb.getDeviceInfo()
+            self.model, self.version = self.adb.get_device_info()
             print('Connected device:', '\t', self.model, '(' + self.version + ')')
 
             if self.args.list:
@@ -299,7 +299,7 @@ class Main:
             # Therefore set the 'wipe' parameter of fastboot.flash(..)
             
             print('Flashing images...')
-            self.adb.rebootBootloader()                
+            self.adb.reboot_bootloader()                
             self.fastboot.flash(bootloader, system, self.args.wipe)
                 
     def list_images(self):
@@ -310,8 +310,8 @@ class Main:
                 
     def parse_args(self):
         parser = argparse.ArgumentParser(description='Flash Nexus factory images.')
-        parser.add_argument('--wipe', action='store_true', help='wipe the device before flashing')
-        parser.add_argument('--list', action='store_true', help='list available factory images')
+        parser.add_argument('-w', '--wipe', action='store_true', help='wipe the device before flashing')
+        parser.add_argument('-l', '--list', action='store_true', help='list available factory images')
         self.args = parser.parse_args()
             
 if __name__ == "__main__":

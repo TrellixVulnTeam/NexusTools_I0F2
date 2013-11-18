@@ -200,17 +200,25 @@ class FactoryImages:
         parser.parse(self.data, model)
         return parser.image_url_list
     
-    def get_latest(self, model, version):
+    def _get_any_with_op(self, model, version, op):
         device_version = self._get_version_index(version)
         factory_images = self.get_all(model)
         
-        latest_image = None
+        image = None
         for factory_image in factory_images:
             image_version = self._get_version_index(factory_image['version'].split(' ')[0])
-            if image_version > device_version:
-                latest_image = factory_image
+            if op == '>' and image_version > device_version:
+                image = factory_image
+            elif op == '=' and image_version == device_version:
+                image = factory_image
                 
-        return latest_image
+        return image
+
+    def get_version(self, model, version):
+        return self._get_any_with_op(model, version, '=')
+    
+    def get_latest(self, model, version):
+        return self._get_any_with_op(model, version, '>')
 
     def download(self, image):
         url = image['url']
@@ -273,23 +281,28 @@ class Main:
         if self.adb.get_device_status() == False:
             print('Device not ready.')
         else:
-            self.model, self.version = self.adb.get_device_info()
-            print('Connected device:', '\t', self.model, '(' + self.version + ')')
+            self.model, self.device_version = self.adb.get_device_info()
+            print('Connected device:', '\t', self.model, '(' + self.device_version + ')')
 
             if self.args.list:
                 self.list_images()
+            elif self.args.flash:
+                self.flash_image(self.args.flash)
             else:
                 self.flash_image()
             
-    def flash_image(self):
-        latest_image = self.factory_images.get_latest(self.model, self.version)
+    def flash_image(self, version = None):
+        if version != None:
+            image = self.factory_images.get_version(self.model, version)
+        else:
+            image = self.factory_images.get_latest(self.model, self.device_version)
 
-        if latest_image == None:
+        if image == None:
             print('Device is up-to-date.')
         else:
-            print('Found new image:', '\t', latest_image['version'])
+            print('Found new image:', '\t', image['version'])
             
-            filename = self.factory_images.download(latest_image)
+            filename = self.factory_images.download(image)
             
             print('Extracting files...')
             bootloader, system = self.factory_images.extract(filename)
@@ -309,9 +322,10 @@ class Main:
             print(' ', factory_image['version'])
                 
     def parse_args(self):
-        parser = argparse.ArgumentParser(description='Flash Nexus factory images.')
+        parser = argparse.ArgumentParser(description='Flashes the newest Nexus factory image.')
         parser.add_argument('-w', '--wipe', action='store_true', help='wipe the device before flashing')
         parser.add_argument('-l', '--list', action='store_true', help='list available factory images')
+        parser.add_argument('-f', '--flash', action='store', type=str, metavar='VERSION', help='flash a specific factory image')
         self.args = parser.parse_args()
             
 if __name__ == "__main__":

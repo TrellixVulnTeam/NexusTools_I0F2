@@ -195,14 +195,17 @@ class FactoryImages:
             v *= 10
         return v
     
-    def getLatest(self, model, version):
-        device_version = self._get_version_index(version)
-        
+    def get_all(self, model):
         parser = ImageParser(strict=False)
         parser.parse(self.data, model)
+        return parser.image_url_list
+    
+    def get_latest(self, model, version):
+        device_version = self._get_version_index(version)
+        factory_images = self.get_all(model)
         
         latest_image = None
-        for factory_image in parser.image_url_list:
+        for factory_image in factory_images:
             image_version = self._get_version_index(factory_image['version'].split(' ')[0])
             if image_version > device_version:
                 latest_image = factory_image
@@ -232,7 +235,7 @@ class FactoryImages:
                     if not data:
                         print('')
                         break
-                    fout.write(data)
+                    foversionut.write(data)
 
                     progress += 1                
                     percent = (int)(progress * 100 / size_mb)
@@ -262,40 +265,53 @@ class Main:
     
     def run(self):
         # healt check, constructors raise exception if tools are not found
-        adb = ADB()
-        fastboot = Fastboot()
+        self.adb = ADB()
+        self.fastboot = Fastboot()
+        self.factory_images = FactoryImages()
 
         print('Connecting...')
-        if adb.getDeviceStatus() == False:
+        if self.adb.getDeviceStatus() == False:
             print('Device not ready.')
         else:
-            model, version = adb.getDeviceInfo()
-            print('Connected device:', '\t', model, '(' + version + ')')
+            self.model, self.version = self.adb.getDeviceInfo()
+            print('Connected device:', '\t', self.model, '(' + self.version + ')')
 
-            factory_images = FactoryImages()
-            latest_image = factory_images.getLatest(model, version)
-
-            if latest_image == None:
-                print('Device is up-to-date.')
+            if self.args.list:
+                self.list_images()
             else:
-                print('Found new image:', '\t', latest_image['version'])
+                self.flash_image()
+            
+    def flash_image(self):
+        latest_image = self.factory_images.get_latest(self.model, self.version)
+
+        if latest_image == None:
+            print('Device is up-to-date.')
+        else:
+            print('Found new image:', '\t', latest_image['version'])
+            
+            filename = self.factory_images.download(latest_image)
+            
+            print('Extracting files...')
+            bootloader, system = self.factory_images.extract(filename)
+            
+            # by default the device is not wiped
+            # If you're coming from a custom ROM you have to wipe it
+            # Therefore set the 'wipe' parameter of fastboot.flash(..)
+            
+            print('Flashing images...')
+            self.adb.rebootBootloader()                
+            self.fastboot.flash(bootloader, system, self.args.wipe)
                 
-                filename = factory_images.download(latest_image)
-                
-                print('Extracting files...')
-                bootloader, system = factory_images.extract(filename)
-                
-                # by default the device is not wiped
-                # If you're coming from a custom ROM you have to wipe it
-                # Therefore set the 'wipe' parameter of fastboot.flash(..)
-                
-                print('Flashing images...')
-                adb.rebootBootloader()                
-                fastboot.flash(bootloader, system, self.args.wipe)
+    def list_images(self):
+        print('Available versions:')
+        factory_images = self.factory_images.get_all(self.model)
+        for factory_image in factory_images:
+            print(' ', factory_image['version'])
                 
     def parse_args(self):
         parser = argparse.ArgumentParser(description='Flash Nexus factory images.')
         parser.add_argument('--wipe', action='store_true', help='wipe the device before flashing')
+        parser.add_argument('--list', action='store_true', help='list available factory images')
         self.args = parser.parse_args()
             
 if __name__ == "__main__":

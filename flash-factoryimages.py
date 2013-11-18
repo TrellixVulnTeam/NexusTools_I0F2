@@ -34,8 +34,10 @@ class ADB:
     
     def __init__(self):
         self.adb_path = sys.platform + '/' + 'adb'
+        if sys.platform == 'win32':
+            self.adb_path += '.exe'
         if not os.path.exists(self.adb_path):
-            raise Exception('adb executable not found')
+            raise Exception('Executable not found: ' + self.adb_path)
         print('Found', self.adb_path)
 
     def getDeviceProperty(self, prop_name):
@@ -87,12 +89,18 @@ class Fastboot:
     
     def __init__(self):
         self.fastboot_path = sys.platform + '/' + 'fastboot'
+        if sys.platform == 'win32':
+            self.fastboot_path += '.exe'
         if not os.path.exists(self.fastboot_path):
-            raise Exception('fastboot executable not found')
+            raise Exception('Executable not found: ' + self.fastboot_path)
         print('Found', self.fastboot_path)
 
     def cmd(self, *params):
-        cmd = ['sudo', self.fastboot_path]
+        if sys.platform == 'linux':
+            cmd = ['sudo', self.fastboot_path]
+        else:
+            cmd = [self.fastboot_path]
+            
         for p in params:
             cmd.append(p)
             

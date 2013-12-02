@@ -30,15 +30,23 @@ class ADB:
         if not os.path.exists(self.adb_path):
             raise Exception('Executable not found: ' + self.adb_path)
         print('Found', self.adb_path)
-
-    def get_device_property(self, prop_name):
+        
+    def shell(self, params):
+        cmd = [self.adb_path, '-d', 'shell']
+        
+        for p in params:
+            cmd.append(p)
+            
         try:
-            result = subprocess.check_output([self.adb_path, '-d', 'shell', 'getprop', prop_name], universal_newlines=True)
+            result = subprocess.check_output(cmd, universal_newlines=True)
         except FileNotFoundError:
             raise Exception('Couldn\'t find adb binary')
         except subprocess.CalledProcessError:
             raise Exception('Error executing adb command')
         return result.replace('\r', '').replace('\n', '')
+    
+    def get_device_property(self, prop_name):
+        return self.shell(['getprop', prop_name])
 
     def get_device_info(self):
         model = self.get_device_property('ro.product.name')

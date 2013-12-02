@@ -19,113 +19,16 @@
 # with this program; if not, write to the Free Software Foundation, Inc.,
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
+from adb import ADB
+from fastboot import Fastboot
+
 from html.parser import HTMLParser
 
 import argparse
 import hashlib
 import os
-import subprocess
-import sys
 import tarfile
-import time
 import urllib.request
-
-class ADB:
-    
-    def __init__(self):
-        self.adb_path = sys.platform + '/' + 'adb'
-        if sys.platform == 'win32':
-            self.adb_path += '.exe'
-        if not os.path.exists(self.adb_path):
-            raise Exception('Executable not found: ' + self.adb_path)
-        print('Found', self.adb_path)
-
-    def get_device_property(self, prop_name):
-        try:
-            result = subprocess.check_output([self.adb_path, '-d', 'shell', 'getprop', prop_name], universal_newlines=True)
-        except FileNotFoundError:
-            raise Exception('Couldn\'t find adb binary')
-        except subprocess.CalledProcessError:
-            raise Exception('Error executing adb command')
-        return result.replace('\r', '').replace('\n', '')
-
-    def get_device_info(self):
-        model = self.get_device_property('ro.product.name')
-        version = self.get_device_property('ro.build.version.release')
-        return model, version
-    
-    def get_device_status(self):
-        try:
-            result = subprocess.check_output([self.adb_path, 'get-state'], universal_newlines=True)
-        except FileNotFoundError:
-            raise Exception('Couldn\'t find adb binary')
-        except subprocess.CalledProcessError:
-            raise Exception('Error executing adb command')
-        status = result.replace('\r', '').replace('\n', '')
-        return status.endswith('device')
-    
-    def reboot_bootloader(self):
-        try:
-            subprocess.check_output([self.adb_path, 'reboot-bootloader'], universal_newlines=True)
-        except FileNotFoundError:
-            raise Exception('Couldn\'t find adb binary')
-        except subprocess.CalledProcessError:
-            raise Exception('Error executing adb command')
-    
-class Fastboot:
-    
-    # Original script:
-    #
-    # fastboot oem unlock
-    # fastboot erase boot
-    # fastboot erase cache
-    # fastboot erase recovery
-    # fastboot erase system
-    # fastboot erase userdata
-    # fastboot flash bootloader bootloader-grouper-4.23.img
-    # fastboot reboot-bootloader
-    # sleep 10
-    # fastboot -w update image-nakasi-krt16o.zip
-    
-    def __init__(self):
-        self.fastboot_path = sys.platform + '/' + 'fastboot'
-        if sys.platform == 'win32':
-            self.fastboot_path += '.exe'
-        if not os.path.exists(self.fastboot_path):
-            raise Exception('Executable not found: ' + self.fastboot_path)
-        print('Found', self.fastboot_path)
-
-    def cmd(self, *params):
-        if sys.platform == 'linux':
-            cmd = ['sudo', self.fastboot_path]
-        else:
-            cmd = [self.fastboot_path]
-            
-        for p in params:
-            cmd.append(p)
-            
-        try:
-            subprocess.check_output(cmd, universal_newlines=True)
-        except FileNotFoundError:
-            raise Exception('Couldn\'t find fastboot binary')
-        except subprocess.CalledProcessError:
-            raise Exception('Error executing fastboot command')
-        
-    def flash(self, bootloader, system, wipe = False):
-        self.cmd('oem', 'unlock')
-        self.cmd('erase', 'boot')
-        self.cmd('erase', 'cache')
-        self.cmd('erase', 'recovery')
-        self.cmd('erase', 'system')
-        if wipe:
-            self.cmd('erase', 'userdata')
-        self.cmd('flash', 'bootloader', bootloader)
-        self.cmd('reboot-bootloader')
-        time.sleep(10)
-        if wipe:
-            self.cmd('-w', 'update', system)
-        else:
-            self.cmd('update', system)
     
 class ImageParser(HTMLParser):
     

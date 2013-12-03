@@ -5,49 +5,28 @@ from adb import ADB
 
 import argparse
 
-class PackageInfo:
-    
-    path = None
-    packageName = None
-    
-    def __init__(self, pkg):
-        p = pkg.split('=')
-        if len(p) == 2:
-            self.path = p[0]
-            self.packageName = p[1]
-            
-    def valid(self):
-        return self.path is not None and self.packageName is not None
-        
-    def __str__(self):
-        return self.path + ' --> ' + self.packageName
-        
 class PM(ADB):
     
-    def list_disabled_packages(self):
-        self.list_packages('-d') 
+    def get_disabled_packages(self):
+        return self.get_packages('-d') 
         
-    def list_enabled_packages(self):
-        self.list_packages('-e') 
+    def get_enabled_packages(self):
+        return self.get_packages('-e') 
     
-    def list_system_packages(self):
-        self.list_packages('-s') 
+    def get_system_packages(self):
+        return self.get_packages('-s') 
     
-    def list_user_packages(self):
-        self.list_packages('-3') 
-        
-    def list_packages(self, param):
-        package_infos = self.get_packages(param)
-        for pi in package_infos:
-            print(str(pi))
+    def get_user_packages(self):
+        return self.get_packages('-3') 
         
     def get_packages(self, param):
-        package_infos = []
+        package_infos = {}
         pkgs = self.shell(['pm', 'list', 'packages', '-f', param]).split('package:')
-        for p in pkgs:
-            pinf = PackageInfo(p)
-            if pinf.valid():
-                package_infos.append(pinf)
+        for pkg in pkgs:
+            p = pkg.split('=')
+            if len(p) == 2:
+                # key=packageName, value=packagePath
+                package_infos[p[1]] = p[0]
         return package_infos
         
 class Main:    
@@ -56,14 +35,19 @@ class Main:
         # healt check, constructors raise exception if tools are not found
         self.pm = PM()
 
+        package_infos = {}
         if self.args.disabled:
-            self.pm.list_disabled_packages()
+            package_infos = self.pm.get_disabled_packages()
         elif self.args.enabled:
-            self.pm.list_enabled_packages()
+            package_infos = self.pm.get_enabled_packages()
         elif self.args.system:
-            self.pm.list_system_packages()
+            package_infos = self.pm.get_system_packages()
         elif self.args.user:
-            self.pm.list_user_packages()
+            package_infos = self.pm.get_user_packages()
+
+        for packageName, packagePath in package_infos.items():
+            print(packageName, '-->', packagePath)
+        
         
     def parse_args(self):
         parser = argparse.ArgumentParser(description='Interface to Package Manager.')

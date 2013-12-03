@@ -70,3 +70,4 @@ class ADB:
             raise Exception('Couldn\'t find adb binary')
         except subprocess.CalledProcessError:
             raise Exception('Error executing adb command')
+        

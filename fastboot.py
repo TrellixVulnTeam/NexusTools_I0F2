@@ -1,7 +1,8 @@
+#!/usr/bin/python3
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python
 
 # Nexus Tools by ramdroid
-# Copyright (C) 2013 Ronald Ammann (ramdroid)
+# Copyright (C) 2013-2014 Ronald Ammann (ramdroid)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,17 +50,23 @@ class Fastboot:
             if silent==False:
                 raise Exception('Error executing fastboot command')
         
-    def flash(self, bootloader, system, wipe = False):
+    def flash(self, bootloader, system, wipe = False, skip_bootloader = False, skip_recovery = False):
         self.cmd('oem', 'unlock', silent=True)
         self.cmd('erase', 'boot')
         self.cmd('erase', 'cache')
-        self.cmd('erase', 'recovery')
         self.cmd('erase', 'system')
+        
+        if not skip_recovery:
+            self.cmd('erase', 'recovery')
+        
         if wipe:
             self.cmd('erase', 'userdata')
-        self.cmd('flash', 'bootloader', bootloader)
-        self.cmd('reboot-bootloader')
-        time.sleep(10)
+            
+        if not skip_bootloader:
+            self.cmd('flash', 'bootloader', bootloader)
+            self.cmd('reboot-bootloader')
+            time.sleep(10)
+            
         if wipe:
             self.cmd('-w', 'update', system)
         else:

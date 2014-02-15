@@ -1,7 +1,7 @@
 # kate: space-indent on; indent-width 4; mixedindent off; indent-mode python;
 
 # Nexus Tools by ramdroid
-# Copyright (C) 2013 Ronald Ammann (ramdroid)
+# Copyright (C) 2013-2014 Ronald Ammann (ramdroid)
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by

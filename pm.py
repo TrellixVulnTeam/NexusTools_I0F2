@@ -18,8 +18,19 @@ class PM(ADB):
     
     def get_user_packages(self):
         return self.get_packages('-3') 
+    
+    def get_blocked_packages(self):
+        blocked_packages = {}
+        all_pkgs = self.get_packages('-u')
+        inst_pkgs = self.get_enabled_packages()
+        disabled_pkgs = self.get_disabled_packages()
         
-    def get_packages(self, param):
+        for packageName, packagePath in all_pkgs.items():
+            if packageName not in inst_pkgs and packageName not in disabled_pkgs:
+                blocked_packages[packageName] = packagePath
+        return blocked_packages
+        
+    def get_packages(self, param, includeUninstalled=False):
         package_infos = {}
         pkgs = self.shell(['pm', 'list', 'packages', '-f', param]).split('package:')
         for pkg in pkgs:
@@ -44,6 +55,8 @@ class Main:
             package_infos = self.pm.get_system_packages()
         elif self.args.user:
             package_infos = self.pm.get_user_packages()
+        elif self.args.blocked:
+            package_infos = self.pm.get_blocked_packages()
 
         for packageName, packagePath in package_infos.items():
             print(packageName, '-->', packagePath)
@@ -55,6 +68,7 @@ class Main:
         parser.add_argument('-e', '--enabled', action='store_true', help='list all enabled packages')
         parser.add_argument('-s', '--system', action='store_true', help='list all system packages')
         parser.add_argument('-u', '--user', action='store_true', help='list all user packages')
+        parser.add_argument('-b', '--blocked', action='store_true', help='list all blocked packages')
         self.args = parser.parse_args()
         
 if __name__ == "__main__":
